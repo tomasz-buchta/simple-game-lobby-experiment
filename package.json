@@ -4,5 +4,9 @@
   "main": "index.js",
   "author": "Tomasz Buchta",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "apollo-server": "^2.6.7",
+    "graphql": "^14.4.2"
+  }
 }

@@ -4,61 +4,61 @@ const { ApolloServer, gql, PubSub } = require('apollo-server');
 // The GraphQL schema
 const typeDefs = gql`
   type Subscription {
-    postAdded: Post  
+    positionChanged: Player  
   }
 
   type Query {
-    posts: [Post]
+    players: [Player]
+  }
+
+  type Player {
+    name: String
+    position: String
   }
 
   type Mutation {
-    addPost(author: String, comment: String): Post
-  }
-
-  type Post {
-    author: String
-    comment: String
+    changePosition(name: String, position: String): Player
   }
 `;
 
 const pubsub = new PubSub();
 
-const POST_ADDED = 'POST_ADDED';
+const POSITION_CHANGED = 'POSITION_CHANGED';
 
-let PostController = class {
-  constructor(posts = []) {
-    this.posts = posts
+let LobbyController = class {
+  constructor() {
+    this.lobby = []
   }
 
-  posts() {
-    return this.posts
+  players() {
+    return this.lobby
   }
 
-  addPost(args) {
-    const post = { ...args }
-    this.posts.push(post)
-    return post
+  changePosition(player) {
+    this.lobby = this.lobby.filter(p => p.name != player.name)
+    this.lobby.push(player)
+    return player
   }
 }
 
-const postController = new PostController()
+const lobbyController = new LobbyController()
 
 // A map of functions which return data for the schema.
 const resolvers = {
   Subscription: {
-    postAdded: {      // Additional event labels can be passed to asyncIterator creation      
-      subscribe: () => pubsub.asyncIterator([POST_ADDED]),
+    positionChanged: {      // Additional event labels can be passed to asyncIterator creation      
+      subscribe: () => pubsub.asyncIterator([POSITION_CHANGED]),
     },
   },
   Query: {
-    posts(root, args, context) {
-      return postController.posts;
+    players(root, args, context) {
+      return lobbyController.players();
     },
   },
   Mutation: {
-    addPost(root, args, context) {
-      pubsub.publish(POST_ADDED, { postAdded: args });
-      return postController.addPost(args);
+    changePosition(root, args, context) {
+      pubsub.publish(POSITION_CHANGED, { positionChanged: args });
+      return lobbyController.changePosition(args);
     },
   },
 };

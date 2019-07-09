@@ -72,18 +72,7 @@ const subscriptions = {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  subscriptions,
-  context: async ({ req, connection }) => {
-    if (connection) {
-      // check connection for metadata
-      return connection.context;
-    } else {
-      // check from req
-      const token = req.headers.authorization || "";
-
-      return { token };
-    }
-  },
+  subscriptions
 });
 
 server.listen().then(({ url, subscriptionsUrl }) => {

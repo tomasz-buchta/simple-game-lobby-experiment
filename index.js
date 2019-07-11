@@ -1,14 +1,20 @@
 const { ApolloServer, gql, PubSub } = require('apollo-server');
+const isEqual = require('lodash.isequal');
 
 
 // The GraphQL schema
 const typeDefs = gql`
   type Subscription {
-    positionChanged: Player  
+    positionChanged: Lobby,
   }
 
   type Query {
-    players: [Player]
+    lobby: Lobby
+  }
+
+  type Lobby {
+    players: [Player],
+    readyToStart: Boolean
   }
 
   type Player {
@@ -17,7 +23,7 @@ const typeDefs = gql`
   }
 
   type Mutation {
-    changePosition(name: String, position: String): Player
+    changePosition(name: String, position: String): Lobby
   }
 `;
 
@@ -27,18 +33,37 @@ const POSITION_CHANGED = 'POSITION_CHANGED';
 
 let LobbyController = class {
   constructor() {
-    this.lobby = []
+    this.lobby = [
+      // Sample data for easier testing
+      { name: "Player TOP", position: "top" },
+      { name: "Player BOTTOM", position: "bottom" },
+      { name: "Player SUPPORT", position: "support" },
+      { name: "Player JUNGLE", position: "jungle" },
+      // { name: "Player MID", position: "mid" }
+    ]
   }
 
-  players() {
-    return this.lobby
+  getLobby() {
+    return this.wrapLobby()
   }
 
   changePosition(player) {
     this.lobby = this.lobby.filter(p => p.name != player.name)
     this.lobby.push(player)
-    return player
+    return this.wrapLobby()
   }
+
+  wrapLobby() {
+    return { players: this.lobby, readyToStart: this.readyToStart() }
+  }
+
+  readyToStart() {
+    // Check if all positions are taken
+    const positions = this.lobby.map(({position}) => position).sort()
+    const expectedPositions = [ 'bottom', 'jungle', 'mid', 'support', 'top' ]
+    return positions.length == 5 && isEqual(positions, expectedPositions)
+  }
+
 }
 
 const lobbyController = new LobbyController()
@@ -51,14 +76,15 @@ const resolvers = {
     },
   },
   Query: {
-    players(root, args, context) {
-      return lobbyController.players();
+    lobby(root, args, context) {
+      return lobbyController.getLobby();
     },
   },
   Mutation: {
     changePosition(root, args, context) {
-      pubsub.publish(POSITION_CHANGED, { positionChanged: args });
-      return lobbyController.changePosition(args);
+      const result = lobbyController.changePosition(args);
+      pubsub.publish(POSITION_CHANGED, { positionChanged: result });
+      return result
     },
   },
 };
